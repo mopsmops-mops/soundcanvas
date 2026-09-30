@@ -120,7 +120,7 @@
   </div>
 
   <div class="card">
-    <div class="label">Звук (10 инструментов)</div>
+    <div class="label">Выберите инструмент для рисования</div>
     <div class="chips" id="instSeg">
       <button data-type="sine" class="active">🎹 Пианино</button>
       <button data-type="triangle">🎻 Флейта</button>
@@ -181,7 +181,7 @@
     <button class="btn destruct" id="clearBtn">Очистить</button>
   </div>
 
-  <div id="status">Коснись холста и нарисуй мелодию</div>
+  <div id="status">Выберите инструмент, цвет и нарисуйте мелодию</div>
 
   <!-- Галерея -->
   <div class="card" style="margin-top:20px;">
@@ -308,6 +308,7 @@
           let rawLines = JSON.parse(data.lines);
           window.lines = rawLines.map(line => ({
             color: line.color,
+            instrument: line.instrument || 'sine',
             points: line.points.map(pt => ({
               x: pt.x > 1 ? pt.x / 760 : pt.x,
               y: pt.y > 1 ? pt.y / 420 : pt.y
@@ -321,7 +322,7 @@
           item.querySelector('.delete-btn').onclick = async () => {
             if(confirm(`Удалить работу "${data.title}"?`)) {
               try {
-                await deleteDoc(doc(doc(db, "tracks", docId)));
+                await deleteDoc(doc(db, "tracks", docId));
                 alert('Удалено!');
                 loadGallery();
               } catch(e) {
@@ -351,7 +352,7 @@ const statusEl = document.getElementById('status');
 const volumeSlider = document.getElementById('volume');
 const loopBtn = document.getElementById('loopBtn');
 
-let instrumentType = 'sine';
+let currentInstrument = 'sine';
 let speedSeconds = 6;
 let currentColor = '#1c1c1e';
 let isLooping = false;
@@ -591,7 +592,8 @@ function moveDraw(e){
 }
 function endDraw(){
   if(!isDrawing) return; isDrawing = false;
-  if(currentLine.length) window.lines.push({points: currentLine.slice(), color: currentColor});
+  // Сохраняем индивидуальный инструмент вместе с каждым отрезком!
+  if(currentLine.length) window.lines.push({points: currentLine.slice(), color: currentColor, instrument: currentInstrument});
   currentLine = []; window.redrawArt(); window.blit();
   statusEl.textContent = 'Линий: ' + window.lines.length;
 }
@@ -675,7 +677,7 @@ function startPlayback(){
     const xPx = canvas.width * k;
 
     const currentFrameKeys = new Set();
-    const activeHits = []; // Сюда собираем все активные точки пересечения
+    const activeHits = [];
     const pulse = Math.sin(nowMs / 80) * 1.5;
 
     // Считываем все пересечения на холсте
@@ -686,9 +688,10 @@ function startPlayback(){
         currentFrameKeys.add(voiceKey);
 
         const freq = yToNote(yRatio);
+        const lineInst = L.instrument || 'sine'; // Каждая линия звучит своим индивидуальным инструментом
 
         if(!activeVoices.has(voiceKey)){
-          activeVoices.set(voiceKey, voiceCreate(instrumentType, freq));
+          activeVoices.set(voiceKey, voiceCreate(lineInst, freq));
         } else {
           activeVoices.get(voiceKey).set(freq);
         }
@@ -701,13 +704,11 @@ function startPlayback(){
     // 1. Отрисовка динамической бегущей полосы в цвет кружка
     ctx.save();
     if (activeHits.length === 1) {
-      // Цвет одиночной линии
       ctx.strokeStyle = activeHits[0].color;
       ctx.shadowColor = activeHits[0].color;
       ctx.shadowBlur = 8;
       ctx.lineWidth = 2.5;
     } else if (activeHits.length > 1) {
-      // Градиент, если считывается сразу несколько линий разных цветов
       const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
       const step = 1 / (activeHits.length - 1 || 1);
       activeHits.forEach((hit, idx) => {
@@ -718,7 +719,6 @@ function startPlayback(){
       ctx.shadowBlur = 10;
       ctx.lineWidth = 3;
     } else {
-      // По умолчанию, когда линия едет по пустому холсту
       ctx.strokeStyle = 'rgba(0, 122, 255, 0.35)';
       ctx.lineWidth = 2;
     }
@@ -762,7 +762,7 @@ loopBtn.onclick = ()=>{
 
 document.querySelectorAll('#instSeg button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('#instSeg button').forEach(x=>x.classList.remove('active'));
-  b.classList.add('active'); instrumentType = b.dataset.type;
+  b.classList.add('active'); currentInstrument = b.dataset.type;
 });
 document.querySelectorAll('#speedSeg button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('#speedSeg button').forEach(x=>x.classList.remove('active'));
