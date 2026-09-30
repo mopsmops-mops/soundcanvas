@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SoundCanvas</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:#f2f2f7; color:#1c1c1e;
+    min-height:100vh; padding:28px 16px 40px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app { max-width:760px; margin:0 auto; }
+  h1 { font-size:34px; font-weight:700; letter-spacing:-0.5px; text-align:center; }
+  .sub { text-align:center; color:#8e8e93; font-size:15px; margin:6px 0 22px; }
+  .card {
+    background:#fff; border-radius:18px; padding:16px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.05);
+    margin-bottom:14px;
+  }
+  .label {
+    font-size:12px; color:#8e8e93; font-weight:600;
+    text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;
+  }
+  .row { display:flex; gap:16px; flex-wrap:wrap; }
+  .row > div { flex:1; min-width:220px; }
+
+  .seg { display:flex; background:rgba(118,118,128,0.12); border-radius:10px; padding:2px; gap:2px; }
+  .seg button {
+    flex:1; border:none; background:transparent; padding:8px 6px; border-radius:8px;
+    font-size:14px; font-weight:600; color:#1c1c1e; cursor:pointer; font-family:inherit;
+    white-space:nowrap; transition:background .15s;
+  }
+  .seg button.active { background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08); }
+
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chips button {
+    border:none; padding:9px 14px; border-radius:999px;
+    background:rgba(118,118,128,0.12); color:#1c1c1e;
+    font-size:14px; font-weight:600; cursor:pointer; font-family:inherit;
+    transition:background .15s, color .15s, transform .05s;
+  }
+  .chips button:active { transform:scale(0.95); }
+  .chips button.active { background:#007AFF; color:#fff; }
+
+  .swatches { display:flex; gap:14px; flex-wrap:wrap; }
+  .sw { width:34px; height:34px; border-radius:50%; border:none; cursor:pointer; transition:transform .1s; }
+  .sw:active { transform:scale(0.9); }
+  .sw.active { box-shadow:0 0 0 3px #fff, 0 0 0 5px #007AFF; }
+
+  .vol { display:flex; align-items:center; gap:10px; }
+  .vol span { font-size:16px; color:#8e8e93; }
+  input[type=range] { flex:1; accent-color:#007AFF; height:28px; }
+
+  .canvas-card { padding:10px; }
+  canvas {
+    display:block; width:100%; height:420px;
+    border-radius:12px; background:#fff; cursor:crosshair; touch-action:none;
+  }
+
+  .btnrow { display:flex; gap:10px; margin-top:4px; }
+  .btn {
+    flex:1; border:none; border-radius:14px; padding:15px 10px;
+    font-size:16px; font-weight:600; cursor:pointer; font-family:inherit;
+    transition:opacity .15s, transform .05s;
+  }
+  .btn:active { transform:scale(0.97); }
+  .btn:hover { opacity:.88; }
+  .btn.primary { background:#007AFF; color:#fff; }
+  .btn.secondary { background:rgba(118,118,128,0.12); color:#1c1c1e; }
+  .btn.destruct { background:#ff3b30; color:#fff; }
+
+  #status { text-align:center; color:#8e8e93; font-size:14px; margin-top:14px; min-height:18px; }
+
+  @media (max-width:600px){
+    h1 { font-size:28px; }
+    canvas { height:320px; }
+    .btnrow { flex-direction:column; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>SoundCanvas</h1>
+  <p class="sub">Рисуй линию — слышь мелодию</p>
+
+  <div class="card">
+    <div class="label">Звук</div>
+    <div class="chips" id="instSeg">
+      <button data-type="sine" class="active">Пианино</button>
+      <button data-type="triangle">Флейта</button>
+      <button data-type="square">8-бит</button>
+      <button data-type="sawtooth">Синт</button>
+      <button data-type="fm">🔔 FM-колокол</button>
+      <button data-type="theremin">🎻 Терменвокс</button>
+      <button data-type="wobble">🌀 Воббла</button>
+      <button data-type="wind">🌬 Ветер</button>
+      <button data-type="space">🌌 Космос</button>
+      <button data-type="organ">🎹 Орган</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="label">Цвет линии</div>
+    <div class="swatches" id="swatches">
+      <button class="sw active" data-color="#1c1c1e" style="background:#1c1c1e"></button>
+      <button class="sw" data-color="#007AFF" style="background:#007AFF"></button>
+      <button class="sw" data-color="#34c759" style="background:#34c759"></button>
+      <button class="sw" data-color="#ff9500" style="background:#ff9500"></button>
+      <button class="sw" data-color="#ffcc00" style="background:#ffcc00"></button>
+      <button class="sw" data-color="#ff3b30" style="background:#ff3b30"></button>
+      <button class="sw" data-color="#af52de" style="background:#af52de"></button>
+      <button class="sw" data-color="#ff2d55" style="background:#ff2d55"></button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <div class="label">Скорость</div>
+        <div class="seg" id="speedSeg">
+          <button data-s="10">Медленно</button>
+          <button data-s="6" class="active">Норма</button>
+          <button data-s="3">Быстро</button>
+        </div>
+      </div>
+      <div>
+        <div class="label">Громкость</div>
+        <div class="vol">
+          <span>🔈</span>
+          <input type="range" id="volume" min="0" max="100" value="90">
+          <span>🔊</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card canvas-card">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <div class="btnrow">
+    <button class="btn primary" id="playBtn">▶ Играть</button>
+    <button class="btn secondary" id="loopBtn">🔁 Повтор: Выкл</button>
+    <button class="btn secondary" id="stopBtn">⏹ Стоп</button>
+    <button class="btn destruct" id="clearBtn">Очистить</button>
+  </div>
+
+  <div id="status">Коснись холста и нарисуй мелодию</div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const artCanvas = document.createElement('canvas');
+const artCtx = artCanvas.getContext('2d');
+const statusEl = document.getElementById('status');
+const volumeSlider = document.getElementById('volume');
+const loopBtn = document.getElementById('loopBtn');
+
+let instrumentType = 'sine';
+let speedSeconds = 6;
+let currentColor = '#1c1c1e';
+let isLooping = false;
+
+let lines = [], currentLine = [], isDrawing = false;
+let audioCtx = null, masterGain = null, volGain = null, noiseBuffer = null;
+let liveVoice = null;
+let voices = [], rafId = null, isPlaying = false;
+
+const SCALE = [261.63,293.66,329.63,392.00,440.00,523.25,587.33,659.25,783.99,880.00,1046.50];
+const GAINS = { sine:.45, triangle:.45, square:.28, sawtooth:.35, fm:.4, theremin:.4, wobble:.4, wind:.8, space:.3, organ:.28 };
+const REL   = { sine:.12, triangle:.12, square:.1, sawtooth:.12, fm:.4, theremin:.15, wobble:.15, wind:.18, space:.6, organ:.2 };
+
+function yToNote(y){
+  const k = Math.round((1 - y / canvas.height) * (SCALE.length - 1));
+  return SCALE[Math.max(0, Math.min(SCALE.length - 1, k))];
+}
+function now(){ return audioCtx.currentTime; }
+
+// ============ CANVAS ============
+function resizeCanvas(){
+  const r = canvas.getBoundingClientRect();
+  canvas.width = r.width;  canvas.height = r.height;
+  artCanvas.width = r.width; artCanvas.height = r.height;
+  redrawArt(); blit();
+}
+window.addEventListener('resize', resizeCanvas);
+
+// Гладкое рисование с помощью кривых Безье
+function strokePath(c, pts, color){
+  if(!pts.length) return;
+  c.strokeStyle = color; c.lineWidth = 4; c.lineCap = 'round'; c.lineJoin = 'round';
+  if(pts.length === 1){
+    c.beginPath(); c.arc(pts[0].x, pts[0].y, 2, 0, Math.PI*2);
+    c.fillStyle = color; c.fill(); return;
+  }
+  c.beginPath();
+  c.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length - 1; i++) {
+    const xc = (pts[i].x + pts[i + 1].x) / 2;
+    const yc = (pts[i].y + pts[i + 1].y) / 2;
+    c.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
+  }
+  c.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+  c.stroke();
+}
+
+function redrawArt(){
+  artCtx.clearRect(0,0,artCanvas.width,artCanvas.height);
+  lines.forEach(L => strokePath(artCtx, L.points, L.color));
+}
+function blit(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(artCanvas,0,0);
+}
+
+// ============ АУДИО ============
+function initAudio(){
+  if(!audioCtx){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.9;
+    volGain = audioCtx.createGain();
+    volGain.gain.value = (volumeSlider.value/100) * 1.2;
+    const comp = audioCtx.createDynamicsCompressor();
+    masterGain.connect(volGain); volGain.connect(comp); comp.connect(audioCtx.destination);
+    
+    const len = audioCtx.sampleRate * 2;
+    noiseBuffer = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+    const d = noiseBuffer.getChannelData(0);
+    for(let i=0;i<len;i++) d[i] = Math.random()*2-1;
+  }
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+}
+volumeSlider.addEventListener('input', () => {
+  if(volGain) volGain.gain.value = (volumeSlider.value/100) * 1.2;
+});
+
+// Универсальная фабрика голосов с поддержкой StereoPanner
+function voiceCreate(type, f){
+  const out = audioCtx.createGain();
+  const t = now();
+  const peak = GAINS[type] || .45;
+  const attack = (type === 'space') ? 0.15 : 0.04;
+  out.gain.setValueAtTime(0, t);
+  out.gain.linearRampToValueAtTime(peak, t + attack);
+
+  const panner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null;
+  if(panner) {
+    out.connect(panner);
+    panner.connect(masterGain);
+  } else {
+    out.connect(masterGain);
+  }
+
+  const all = [];      
+  const srcs = [];     
+  let set = () => {};
+
+  if(type==='sine'||type==='triangle'||type==='square'||type==='sawtooth'){
+    const o = audioCtx.createOscillator(); o.type = type; o.frequency.value = f;
+    o.connect(out); o.start();
+    srcs.push(o); all.push(o);
+    set = nf => o.frequency.setTargetAtTime(nf, now(), 0.02);
+
+  } else if(type==='fm'){
+    const car = audioCtx.createOscillator(); car.frequency.value = f;
+    const mod = audioCtx.createOscillator(); mod.frequency.value = f*3.5;
+    const mg = audioCtx.createGain(); mg.gain.value = f*1.8;
+    mod.connect(mg); mg.connect(car.frequency);
+    car.connect(out); car.start(); mod.start();
+    srcs.push(car,mod); all.push(car,mod,mg);
+    set = nf => { const tt=now();
+      car.frequency.setTargetAtTime(nf,tt,0.02);
+      mod.frequency.setTargetAtTime(nf*3.5,tt,0.02);
+      mg.gain.setTargetAtTime(nf*1.8,tt,0.02); };
+
+  } else if(type==='theremin'){
+    const o = audioCtx.createOscillator(); o.type='sine'; o.frequency.value=f;
+    const vib = audioCtx.createOscillator(); vib.frequency.value=5.5;
+    const vg = audioCtx.createGain(); vg.gain.value=5;
+    vib.connect(vg); vg.connect(o.frequency);
+    o.connect(out); o.start(); vib.start();
+    srcs.push(o,vib); all.push(o,vib,vg);
+    set = nf => o.frequency.setTargetAtTime(nf, now(), 0.06);
+
+  } else if(type==='wobble'){
+    const o = audioCtx.createOscillator(); o.type='sawtooth'; o.frequency.value=f;
+    const filt = audioCtx.createBiquadFilter(); filt.type='lowpass'; filt.Q.value=12; filt.frequency.value=f*2;
+    const lfo = audioCtx.createOscillator(); lfo.frequency.value=6;
+    const lg = audioCtx.createGain(); lg.gain.value=600;
+    lfo.connect(lg); lg.connect(filt.frequency);
+    o.connect(filt); filt.connect(out); o.start(); lfo.start();
+    srcs.push(o,lfo); all.push(o,lfo,filt,lg);
+    set = nf => { const tt=now();
+      o.frequency.setTargetAtTime(nf,tt,0.02);
+      filt.frequency.setTargetAtTime(nf*2,tt,0.02); };
+
+  } else if(type==='wind'){
+    const src = audioCtx.createBufferSource(); src.buffer=noiseBuffer; src.loop=true;
+    const filt = audioCtx.createBiquadFilter(); filt.type='bandpass'; filt.Q.value=10; filt.frequency.value=f;
+    src.connect(filt); filt.connect(out); src.start();
+    srcs.push(src); all.push(src,filt);
+    set = nf => filt.frequency.setTargetAtTime(nf, now(), 0.03);
+
+  } else if(type==='space'){
+    const o1 = audioCtx.createOscillator(); o1.type='sawtooth'; o1.frequency.value=f; o1.detune.value=-9;
+    const o2 = audioCtx.createOscillator(); o2.type='sawtooth'; o2.frequency.value=f; o2.detune.value=9;
+    const filt = audioCtx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=f*4;
+    const vib = audioCtx.createOscillator(); vib.frequency.value=4.5;
+    const vg = audioCtx.createGain(); vg.gain.value=3;
+    vib.connect(vg); vg.connect(o1.frequency); vg.connect(o2.frequency);
+    o1.connect(filt); o2.connect(filt); filt.connect(out);
+    o1.start(); o2.start(); vib.start();
+    srcs.push(o1,o2,vib); all.push(o1,o2,vib,filt,vg);
+    set = nf => { const tt=now();
+      o1.frequency.setTargetAtTime(nf,tt,0.05);
+      o2.frequency.setTargetAtTime(nf,tt,0.05);
+      filt.frequency.setTargetAtTime(nf*4,tt,0.05); };
+
+  } else if(type==='organ'){
+    const parts = [1,2,3,4].map((h,i)=>{
+      const o = audioCtx.createOscillator(); o.type='sine'; o.frequency.value=f*h;
+      const g = audioCtx.createGain(); g.gain.value = 1/(i+1.5);
+      o.connect(g); g.connect(out); o.start();
+      all.push(o,g); srcs.push(o);
+      return {o,h};
+    });
+    set = nf => { const tt=now(); parts.forEach(p=>p.o.frequency.setTargetAtTime(nf*p.h,tt,0.02)); };
+  }
+
+  const relTime = REL[type] || .12;
+  return {
+    set,
+    setPan(xRatio) {
+      if(panner) panner.pan.setTargetAtTime((xRatio * 2) - 1, now(), 0.02);
+    },
+    release(){
+      const t = now();
+      out.gain.cancelScheduledValues(t);
+      out.gain.setValueAtTime(out.gain.value, t);
+      out.gain.exponentialRampToValueAtTime(0.001, t + relTime);
+      setTimeout(()=>{
+        srcs.forEach(s=>{ try{s.stop();}catch(e){} });
+        all.forEach(n=>{ try{n.disconnect();}catch(e){} });
+        try{ out.disconnect(); }catch(e){}
+        if(panner) try{ panner.disconnect(); }catch(e){}
+      }, relTime*1000 + 100);
+    }
+  };
+}
+
+// Голос во время рисования
+function liveStart(p){ 
+  liveStop(); 
+  liveVoice = voiceCreate(instrumentType, yToNote(p.y)); 
+  if(liveVoice) liveVoice.setPan(p.x / canvas.width);
+}
+function liveSet(p){ 
+  if(liveVoice){ 
+    liveVoice.set(yToNote(p.y)); 
+    liveVoice.setPan(p.x / canvas.width);
+  } 
+}
+function liveStop(){ if(liveVoice){ liveVoice.release(); liveVoice = null; } }
+
+// ============ РИСОВАНИЕ ============
+function getPos(e){
+  const r = canvas.getBoundingClientRect();
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const cy = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x: cx - r.left, y: cy - r.top };
+}
+function startDraw(e){
+  e.preventDefault();
+  if(isPlaying) stopPlayback();
+  initAudio();
+  isDrawing = true; currentLine = [];
+  const p = getPos(e); currentLine.push(p);
+  strokePath(artCtx,[p],currentColor); blit();
+  liveStart(p);
+  statusEl.textContent = 'Рисую…';
+}
+function moveDraw(e){
+  if(!isDrawing) return;
+  e.preventDefault();
+  const p = getPos(e), last = currentLine[currentLine.length-1];
+  const dx=p.x-last.x, dy=p.y-last.y;
+  if(dx*dx+dy*dy < 9) return;
+  currentLine.push(p);
+  redrawArt();
+  strokePath(artCtx, currentLine, currentColor);
+  blit();
+  liveSet(p);
+}
+function endDraw(){
+  if(!isDrawing) return;
+  isDrawing = false;
+  if(currentLine.length) lines.push({points: currentLine.slice(), color: currentColor});
+  currentLine = []; liveStop();
+  redrawArt(); blit();
+  statusEl.textContent = 'Линий: ' + lines.length + '. Нажми «Играть».';
+}
+canvas.addEventListener('mousedown', startDraw);
+canvas.addEventListener('mousemove', moveDraw);
+canvas.addEventListener('mouseup', endDraw);
+canvas.addEventListener('mouseleave', endDraw);
+canvas.addEventListener('touchstart', startDraw, {passive:false});
+canvas.addEventListener('touchmove', moveDraw, {passive:false});
+canvas.addEventListener('touchend', endDraw);
+
+// ============ ВОСПРОИЗВЕДЕНИЕ С ПАЛКОЙ ============
+function yAtX(L, x){
+  const pts = L.points;
+  if(pts.length === 1) return Math.abs(pts[0].x - x) < 3 ? pts[0].y : null;
+  for(let i=1;i<pts.length;i++){
+    const a=pts[i-1], b=pts[i];
+    const mn=Math.min(a.x,b.x), mx=Math.max(a.x,b.x);
+    if(x >= mn && x <= mx){
+      if(mx-mn < 0.001) return a.y;
+      const t=(x-a.x)/(b.x-a.x);
+      return a.y + t*(b.y-a.y);
+    }
+  }
+  return null;
+}
+
+function startPlayback(){
+  if(isPlaying) stopPlayback();
+  if(!lines.length){ statusEl.textContent='Сначала нарисуй мелодию'; return; }
+  initAudio();
+
+  let minX=Infinity, maxX=-Infinity;
+  lines.forEach(L=>L.points.forEach(p=>{ if(p.x<minX)minX=p.x; if(p.x>maxX)maxX=p.x; }));
+  if(maxX-minX < 20) maxX = minX+20;
+  minX = Math.max(0, minX-15); maxX = Math.min(canvas.width, maxX+15);
+
+  const type = instrumentType;
+  voices = lines.map(()=>null);
+  const ys = lines.map(()=>null);
+  isPlaying = true;
+  statusEl.textContent = 'Играет…';
+
+  let t0 = performance.now();
+  function frame(nowMs){
+    if(!isPlaying) return;
+    let k = (nowMs-t0)/1000/speedSeconds;
+    
+    if(k >= 1){
+      if(isLooping){
+        t0 = nowMs;
+        k = 0;
+        voices.forEach(v=>v && v.release());
+        voices = lines.map(()=>null);
+      } else {
+        finishPlayback();
+        return;
+      }
+    }
+
+    const x = minX + (maxX-minX)*k;
+    const xRatio = x / canvas.width;
+
+    lines.forEach((L,i)=>{
+      const y = yAtX(L, x);
+      ys[i] = y;
+      if(y == null){
+        if(voices[i]){ voices[i].release(); voices[i]=null; }
+      } else {
+        const f = yToNote(y);
+        if(!voices[i]) {
+          voices[i] = voiceCreate(type, f);
+          voices[i].setPan(xRatio);
+        } else {
+          voices[i].set(f);
+          voices[i].setPan(xRatio);
+        }
+      }
+    });
+
+    blit();
+    ctx.save();
+    ctx.strokeStyle = 'rgba(60,60,60,0.75)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
+    lines.forEach((L,i)=>{
+      if(ys[i]!=null && voices[i]){
+        ctx.beginPath(); ctx.arc(x, ys[i], 6, 0, Math.PI*2);
+        ctx.fillStyle = L.color; ctx.fill();
+      }
+    });
+    ctx.restore();
+
+    rafId = requestAnimationFrame(frame);
+  }
+  rafId = requestAnimationFrame(frame);
+}
+
+function finishPlayback(){
+  voices.forEach(v=>v && v.release()); voices=[];
+  isPlaying=false; blit();
+  statusEl.textContent = 'Готово. Нарисуй ещё или нажми «Играть».';
+}
+function stopPlayback(){
+  if(!isPlaying) return;
+  isPlaying=false;
+  if(rafId) cancelAnimationFrame(rafId);
+  voices.forEach(v=>v && v.release()); voices=[];
+  blit();
+  statusEl.textContent = 'Остановлено.';
+}
+
+document.getElementById('playBtn').addEventListener('click', startPlayback);
+document.getElementById('stopBtn').addEventListener('click', stopPlayback);
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  stopPlayback();
+  lines=[]; currentLine=[];
+  redrawArt(); blit();
+  statusEl.textContent = 'Очищено. Рисуй!';
+});
+
+loopBtn.addEventListener('click', ()=>{
+  isLooping = !isLooping;
+  loopBtn.textContent = isLooping ? '🔁 Повтор: Вкл' : '🔁 Повтор: Выкл';
+  loopBtn.style.background = isLooping ? '#34c759' : 'rgba(118,118,128,0.12)';
+  loopBtn.style.color = isLooping ? '#fff' : '#1c1c1e';
+});
+
+// ============ ПЕРЕКЛЮЧАТЕЛИ ============
+document.querySelectorAll('#instSeg button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#instSeg button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    instrumentType = btn.dataset.type;
+  });
+});
+document.querySelectorAll('#speedSeg button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#speedSeg button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    speedSeconds = parseFloat(btn.dataset.s);
+  });
+});
+document.querySelectorAll('.sw').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.sw').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentColor = btn.dataset.color;
+  });
+});
+
+setTimeout(resizeCanvas, 50);
+</script>
+</body>
+</html>
