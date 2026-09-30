@@ -100,7 +100,7 @@
   <h1>SoundCanvas</h1>
   <p class="sub">Музыкальная соцсеть-холст</p>
 
-  <!-- Блок авторизации / Профиля -->
+  <!-- Блок авторизации -->
   <div class="card" id="authCard">
     <div class="label">Аккаунт</div>
     <div id="authInputs">
@@ -120,18 +120,18 @@
   </div>
 
   <div class="card">
-    <div class="label">Звук</div>
+    <div class="label">Звук (10 инструментов)</div>
     <div class="chips" id="instSeg">
-      <button data-type="sine" class="active">Пианино</button>
-      <button data-type="triangle">Флейта</button>
-      <button data-type="square">8-бит</button>
-      <button data-type="sawtooth">Синт</button>
-      <button data-type="fm">🔔 FM-колокол</button>
-      <button data-type="theremin">🎻 Терменвокс</button>
-      <button data-type="wobble">🌀 Воббла</button>
-      <button data-type="wind">🌬 Ветер</button>
-      <button data-type="space">🌌 Космос</button>
-      <button data-type="organ">🎹 Орган</button>
+      <button data-type="sine" class="active">🎹 Пианино</button>
+      <button data-type="triangle">🎻 Флейта</button>
+      <button data-type="square">🎮 8-Bit</button>
+      <button data-type="sawtooth">🎷 Синт</button>
+      <button data-type="space">🪐 Космос</button>
+      <button data-type="drops">💧 Капли</button>
+      <button data-type="laser">👾 Лазер</button>
+      <button data-type="bowl">🧘 Поющая Чаша</button>
+      <button data-type="cyber">⚙️ Киберпанк</button>
+      <button data-type="robot">🤖 Робот</button>
     </div>
   </div>
 
@@ -183,7 +183,7 @@
 
   <div id="status">Коснись холста и нарисуй мелодию</div>
 
-  <!-- Галерея опубликованных треков из Базы Данных -->
+  <!-- Галерея -->
   <div class="card" style="margin-top:20px;">
     <div class="label">Галерея проектов пользователей (Firebase)</div>
     <div class="gallery-list" id="galleryList">Загрузка проектов...</div>
@@ -196,9 +196,8 @@
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  // КОНФИГУРАЦИЯ FIREBASE
   const firebaseConfig = {
-    apiKey: "AIzaSyD4vYvvdSpbxrbPC08D_0X_JxnmnlWt11Y",
+    apiKey: "AIzaSyD4vYvdSpbxrbPC08D_0X_JxmnlWt11Y",
     authDomain: "soundcanvas-7e5fd.firebaseapp.com",
     projectId: "soundcanvas-7e5fd",
     storageBucket: "soundcanvas-7e5fd.firebasestorage.app",
@@ -207,15 +206,12 @@
     measurementId: "G-J0KGZPKK67"
   };
 
-
-  // Инициализация Firebase
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
 
   let currentUser = null;
 
-  // Авторизация
   document.getElementById('registerBtn').onclick = async () => {
     const e = document.getElementById('emailInput').value;
     const p = document.getElementById('passInput').value;
@@ -247,7 +243,6 @@
     }
   });
 
-  // Сохранение рисунка в Firestore БД
   document.getElementById('saveCloudBtn').onclick = async () => {
     if(!currentUser) return alert('Сначала войдите в аккаунт!');
     if(!window.lines || !window.lines.length) return alert('Холст пуст!');
@@ -269,7 +264,6 @@
     }
   };
 
-  // Загрузка галереи из базы с возможностью удаления
   async function loadGallery() {
     const listEl = document.getElementById('galleryList');
     listEl.innerHTML = 'Загрузка...';
@@ -287,7 +281,6 @@
         const item = document.createElement('div');
         item.className = 'gallery-item';
         
-        // Кнопка удаления отображается только если текущий пользователь — автор работы
         const isAuthor = currentUser && currentUser.email === data.author;
         const deleteBtnHtml = isAuthor 
           ? `<button class="btn destruct delete-btn" style="flex:0; padding:6px 12px; font-size:12px; margin-left:6px;">🗑 Удалить</button>` 
@@ -304,21 +297,26 @@
           </div>
         `;
 
-        // Логика кнопки "Загрузить"
         item.querySelector('.load-btn').onclick = () => {
-          window.lines = JSON.parse(data.lines);
+          let rawLines = JSON.parse(data.lines);
+          window.lines = rawLines.map(line => ({
+            color: line.color,
+            points: line.points.map(pt => ({
+              x: pt.x > 1 ? pt.x / 760 : pt.x,
+              y: pt.y > 1 ? pt.y / 420 : pt.y
+            }))
+          }));
           window.redrawArt(); window.blit();
           alert('Мелодия загружена на холст!');
         };
 
-        // Логика кнопки "Удалить"
         if(isAuthor) {
           item.querySelector('.delete-btn').onclick = async () => {
             if(confirm(`Удалить работу "${data.title}"?`)) {
               try {
-                await deleteDoc(doc(db, "tracks", docId));
+                await deleteDoc(doc(doc(db, "tracks", docId)));
                 alert('Удалено!');
-                loadGallery(); // Перезагружаем список
+                loadGallery();
               } catch(e) {
                 alert('Ошибка при удалении: ' + e.message);
               }
@@ -337,7 +335,7 @@
 </script>
 
 <script>
-// ОСНОВНАЯ ЛОГИКА ОТРИСОВКИ И АУДИО (SoundCanvas)
+// ГРАФИКА И ЗВУКОВОЙ ДВИЖОК
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const artCanvas = document.createElement('canvas');
@@ -353,18 +351,34 @@ let isLooping = false;
 
 window.lines = []; 
 let currentLine = [], isDrawing = false;
-let audioCtx = null, masterGain = null, volGain = null, noiseBuffer = null;
-let voices = [], rafId = null, isPlaying = false;
 
-const SCALE = [261.63,293.66,329.63,392.00,440.00,523.25,587.33,659.25,783.99,880.00,1046.50];
-const GAINS = { sine:.45, triangle:.45, square:.28, sawtooth:.35, fm:.4, theremin:.4, wobble:.4, wind:.8, space:.3, organ:.28 };
-const REL   = { sine:.12, triangle:.12, square:.1, sawtooth:.12, fm:.4, theremin:.15, wobble:.15, wind:.18, space:.6, organ:.2 };
+let audioCtx = null;
+let masterGain = null;
 
-function yToNote(y){
-  const k = Math.round((1 - y / canvas.height) * (SCALE.length - 1));
-  return SCALE[Math.max(0, Math.min(SCALE.length - 1, k))];
+function unlockAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = (volumeSlider.value / 100);
+    masterGain.connect(audioCtx.destination);
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
 }
-function now(){ return audioCtx.currentTime; }
+
+window.addEventListener('click', unlockAudio);
+window.addEventListener('touchstart', unlockAudio);
+
+volumeSlider.addEventListener('input', () => {
+  if (masterGain) masterGain.gain.value = (volumeSlider.value / 100);
+});
+
+function yToNote(yRatio) {
+  const minFreq = 140; 
+  const maxFreq = 950; 
+  return minFreq * Math.pow(maxFreq / minFreq, 1 - yRatio);
+}
 
 function resizeCanvas(){
   const r = canvas.getBoundingClientRect();
@@ -376,19 +390,20 @@ window.addEventListener('resize', resizeCanvas);
 
 function strokePath(c, pts, color){
   if(!pts.length) return;
+  const w = canvas.width, h = canvas.height;
   c.strokeStyle = color; c.lineWidth = 4; c.lineCap = 'round'; c.lineJoin = 'round';
   if(pts.length === 1){
-    c.beginPath(); c.arc(pts[0].x, pts[0].y, 2, 0, Math.PI*2);
+    c.beginPath(); c.arc(pts[0].x * w, pts[0].y * h, 2, 0, Math.PI*2);
     c.fillStyle = color; c.fill(); return;
   }
   c.beginPath();
-  c.moveTo(pts[0].x, pts[0].y);
+  c.moveTo(pts[0].x * w, pts[0].y * h);
   for (let i = 1; i < pts.length - 1; i++) {
-    const xc = (pts[i].x + pts[i + 1].x) / 2;
-    const yc = (pts[i].y + pts[i + 1].y) / 2;
-    c.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
+    const xc = ((pts[i].x + pts[i + 1].x) / 2) * w;
+    const yc = ((pts[i].y + pts[i + 1].y) / 2) * h;
+    c.quadraticCurveTo(pts[i].x * w, pts[i].y * h, xc, yc);
   }
-  c.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+  c.lineTo(pts[pts.length - 1].x * w, pts[pts.length - 1].y * h);
   c.stroke();
 }
 
@@ -401,57 +416,143 @@ window.blit = function(){
   ctx.drawImage(artCanvas,0,0);
 }
 
-function initAudio(){
-  if(!audioCtx){
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    masterGain = audioCtx.createGain(); masterGain.gain.value = 0.9;
-    volGain = audioCtx.createGain(); volGain.gain.value = (volumeSlider.value/100) * 1.2;
-    const comp = audioCtx.createDynamicsCompressor();
-    masterGain.connect(volGain); volGain.connect(comp); comp.connect(audioCtx.destination);
+// СИНТЕЗАТОР ЗВУКА
+function voiceCreate(type, f) {
+  unlockAudio();
+  const now = audioCtx.currentTime;
+  const gain = audioCtx.createGain();
+  gain.connect(masterGain);
+
+  let osc1 = audioCtx.createOscillator();
+  let osc2 = null, modOsc = null, filter = null;
+  let nodesToClean = [osc1, gain];
+
+  if (type === 'space') { 
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(f, now);
+
+    modOsc = audioCtx.createOscillator();
+    const modGain = audioCtx.createGain();
+    modOsc.frequency.setValueAtTime(5, now); 
+    modGain.gain.setValueAtTime(f * 0.03, now);
+    modOsc.connect(modGain);
+    modGain.connect(osc1.frequency);
+    modOsc.start();
+    nodesToClean.push(modOsc, modGain);
+
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(0.2, now + 0.1);
+    osc1.connect(gain);
+
+  } else if (type === 'drops') { 
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(f, now);
+
+    modOsc = audioCtx.createOscillator();
+    const modGain = audioCtx.createGain();
+    modOsc.type = 'triangle';
+    modOsc.frequency.setValueAtTime(f * 2, now);
+    modGain.gain.setValueAtTime(f * 1.5, now);
+    modGain.gain.exponentialRampToValueAtTime(1, now + 0.15);
+    modOsc.connect(modGain);
+    modGain.connect(osc1.frequency);
+    modOsc.start();
+    nodesToClean.push(modOsc, modGain);
+
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+    osc1.connect(gain);
+
+  } else if (type === 'laser') { 
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(f * 3, now);
+    osc1.frequency.exponentialRampToValueAtTime(f * 0.5, now + 0.12);
+
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    osc1.connect(gain);
+
+  } else if (type === 'bowl') { 
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(f, now);
+
+    osc2 = audioCtx.createOscillator();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(f * 2.76, now); 
+    const osc2Gain = audioCtx.createGain();
+    osc2Gain.gain.setValueAtTime(0.08, now);
+    osc2.connect(osc2Gain);
+    osc2Gain.connect(gain);
+    osc2.start();
+    nodesToClean.push(osc2, osc2Gain);
+
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(0.25, now + 0.15);
+    osc1.connect(gain);
+
+  } else if (type === 'cyber') { 
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(f, now);
+
+    filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(600, now);
+    filter.Q.setValueAtTime(6, now);
+
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(0.25, now + 0.04);
+    osc1.connect(filter);
+    filter.connect(gain);
+    nodesToClean.push(filter);
+
+  } else if (type === 'robot') { 
+    osc1.type = 'triangle';
+    osc1.frequency.setValueAtTime(f, now);
+
+    modOsc = audioCtx.createOscillator();
+    modOsc.type = 'square';
+    modOsc.frequency.setValueAtTime(60, now); 
+    const modGain = audioCtx.createGain();
+    modGain.gain.setValueAtTime(0.15, now);
     
-    const len = audioCtx.sampleRate * 2;
-    noiseBuffer = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
-    const d = noiseBuffer.getChannelData(0);
-    for(let i=0;i<len;i++) d[i] = Math.random()*2-1;
+    osc1.connect(gain);
+    modOsc.connect(gain.gain);
+    modOsc.start();
+    nodesToClean.push(modOsc, modGain);
+
+    gain.gain.setValueAtTime(0.15, now);
+
+  } else { 
+    osc1.type = type;
+    osc1.frequency.setValueAtTime(f, now);
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(0.2, now + 0.05);
+    osc1.connect(gain);
   }
-  if(audioCtx.state === 'suspended') audioCtx.resume();
-}
-volumeSlider.addEventListener('input', () => {
-  if(volGain) volGain.gain.value = (volumeSlider.value/100) * 1.2;
-});
 
-function voiceCreate(type, f){
-  const out = audioCtx.createGain();
-  const t = now();
-  const peak = GAINS[type] || .45;
-  out.gain.setValueAtTime(0, t);
-  out.gain.linearRampToValueAtTime(peak, t + 0.04);
+  osc1.start();
 
-  const panner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null;
-  if(panner) { out.connect(panner); panner.connect(masterGain); } 
-  else { out.connect(masterGain); }
-
-  const all = [], srcs = [];
-  let set = () => {};
-
-  const o = audioCtx.createOscillator(); o.type = (type==='sine'||type==='triangle'||type==='square'||type==='sawtooth')?type:'sine'; 
-  o.frequency.value = f; o.connect(out); o.start();
-  srcs.push(o); all.push(o);
-  set = nf => o.frequency.setTargetAtTime(nf, now(), 0.02);
-
-  const relTime = REL[type] || .12;
   return {
-    set,
-    setPan(xRatio) { if(panner) panner.pan.setTargetAtTime((xRatio * 2) - 1, now(), 0.02); },
-    release(){
-      const t = now();
-      out.gain.cancelScheduledValues(t);
-      out.gain.setValueAtTime(out.gain.value, t);
-      out.gain.exponentialRampToValueAtTime(0.001, t + relTime);
-      setTimeout(()=>{
-        srcs.forEach(s=>{ try{s.stop();}catch(e){} });
-        all.forEach(n=>{ try{n.disconnect();}catch(e){} });
-      }, relTime*1000 + 100);
+    set(newFreq) {
+      if (audioCtx) {
+        osc1.frequency.setTargetAtTime(newFreq, audioCtx.currentTime, 0.03);
+        if (type === 'bowl' && osc2) {
+          osc2.frequency.setTargetAtTime(newFreq * 2.76, audioCtx.currentTime, 0.03);
+        }
+      }
+    },
+    release() {
+      if (audioCtx) {
+        const rTime = audioCtx.currentTime;
+        gain.gain.cancelScheduledValues(rTime);
+        gain.gain.setValueAtTime(gain.gain.value, rTime);
+        gain.gain.linearRampToValueAtTime(0.001, rTime + 0.12);
+        setTimeout(() => {
+          nodesToClean.forEach(node => {
+            try { if (node.stop) node.stop(); node.disconnect(); } catch(e){}
+          });
+        }, 150);
+      }
     }
   };
 }
@@ -460,10 +561,14 @@ function getPos(e){
   const r = canvas.getBoundingClientRect();
   const cx = e.touches ? e.touches[0].clientX : e.clientX;
   const cy = e.touches ? e.touches[0].clientY : e.clientY;
-  return { x: cx - r.left, y: cy - r.top };
+  return { 
+    x: Math.max(0, Math.min(1, (cx - r.left) / canvas.width)), 
+    y: Math.max(0, Math.min(1, (cy - r.top) / canvas.height)) 
+  };
 }
+
 function startDraw(e){
-  e.preventDefault(); if(isPlaying) stopPlayback(); initAudio();
+  e.preventDefault(); if(isPlaying) stopPlayback(); unlockAudio();
   isDrawing = true; currentLine = [];
   const p = getPos(e); currentLine.push(p);
   strokePath(artCtx,[p],currentColor); window.blit();
@@ -471,7 +576,7 @@ function startDraw(e){
 function moveDraw(e){
   if(!isDrawing) return; e.preventDefault();
   const p = getPos(e), last = currentLine[currentLine.length-1];
-  if((p.x-last.x)**2 + (p.y-last.y)**2 < 9) return;
+  if((p.x-last.x)**2 + (p.y-last.y)**2 < 0.00005) return;
   currentLine.push(p);
   window.redrawArt();
   strokePath(artCtx, currentLine, currentColor);
@@ -487,23 +592,63 @@ canvas.addEventListener('mousedown', startDraw); canvas.addEventListener('mousem
 canvas.addEventListener('mouseup', endDraw); canvas.addEventListener('touchstart', startDraw, {passive:false});
 canvas.addEventListener('touchmove', moveDraw, {passive:false}); canvas.addEventListener('touchend', endDraw);
 
-function yAtX(L, x){
+// ПОИСК ВСЕХ ТОЧЕК ПЕРЕСЕЧЕНИЯ ПО ОСИ X
+function yAtX(L, xRatio){
   const pts = L.points;
-  if(pts.length === 1) return Math.abs(pts[0].x - x) < 3 ? pts[0].y : null;
-  for(let i=1;i<pts.length;i++){
-    const a=pts[i-1], b=pts[i];
-    if(x >= Math.min(a.x,b.x) && x <= Math.max(a.x,b.x)){
-      const t=(x-a.x)/(b.x-a.x || 1); return a.y + t*(b.y-a.y);
+  const results = [];
+  if(pts.length === 1) {
+    if(Math.abs(pts[0].x - xRatio) < 0.01) results.push(pts[0].y);
+    return results;
+  }
+  for(let i=1; i<pts.length; i++){
+    const a = pts[i-1], b = pts[i];
+    if(xRatio >= Math.min(a.x,b.x) && xRatio <= Math.max(a.x,b.x)){
+      const t = (xRatio - a.x) / (b.x - a.x || 1);
+      results.push(a.y + t * (b.y - a.y));
     }
   }
-  return null;
+  return results;
+}
+
+let activeVoices = new Map(), rafId = null, isPlaying = false;
+
+function drawPointerCircle(xPx, yPx, color, pulse) {
+  ctx.save();
+  ctx.shadowColor = color || '#007AFF';
+  ctx.shadowBlur = 12;
+
+  ctx.beginPath();
+  ctx.arc(xPx, yPx, 12 + pulse, 0, Math.PI * 2);
+  ctx.fillStyle = color ? color + '44' : 'rgba(0, 122, 255, 0.25)';
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(xPx, yPx, 7 + pulse * 0.5, 0, Math.PI * 2);
+  ctx.fillStyle = color || '#007AFF';
+  ctx.fill();
+
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = '#ffffff';
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(xPx, yPx, 2, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function stopAllVoices() {
+  activeVoices.forEach(voice => voice.release());
+  activeVoices.clear();
 }
 
 function startPlayback(){
+  unlockAudio();
   if(isPlaying) stopPlayback();
   if(!window.lines.length){ statusEl.textContent='Нарисуйте что-нибудь'; return; }
-  initAudio();
-  voices = window.lines.map(()=>null);
+
   isPlaying = true;
   let t0 = performance.now();
 
@@ -511,21 +656,85 @@ function startPlayback(){
     if(!isPlaying) return;
     let k = (nowMs-t0)/1000/speedSeconds;
     if(k >= 1){
-      if(isLooping){ t0 = nowMs; k = 0; voices.forEach(v=>v&&v.release()); voices = window.lines.map(()=>null); }
-      else { stopPlayback(); return; }
+      if(isLooping){ 
+        t0 = nowMs; k = 0; 
+        stopAllVoices();
+      } else { 
+        stopPlayback(); return; 
+      }
     }
-    const x = canvas.width * k;
-    window.lines.forEach((L,i)=>{
-      const y = yAtX(L, x);
-      if(y == null){ if(voices[i]){ voices[i].release(); voices[i]=null; } }
-      else {
-        if(!voices[i]) { voices[i] = voiceCreate(instrumentType, yToNote(y)); voices[i].setPan(x/canvas.width); }
-        else { voices[i].set(yToNote(y)); voices[i].setPan(x/canvas.width); }
+    
+    window.blit();
+    const xPx = canvas.width * k;
+
+    const currentFrameKeys = new Set();
+    const activeHits = []; // Сюда собираем все активные точки пересечения
+    const pulse = Math.sin(nowMs / 80) * 1.5;
+
+    // Считываем все пересечения на холсте
+    window.lines.forEach((L, lineIdx) => {
+      const yRatios = yAtX(L, k);
+      yRatios.forEach((yRatio, ptIdx) => {
+        const voiceKey = `${lineIdx}_${ptIdx}`;
+        currentFrameKeys.add(voiceKey);
+
+        const freq = yToNote(yRatio);
+
+        if(!activeVoices.has(voiceKey)){
+          activeVoices.set(voiceKey, voiceCreate(instrumentType, freq));
+        } else {
+          activeVoices.get(voiceKey).set(freq);
+        }
+
+        const yPx = canvas.height * yRatio;
+        activeHits.push({ yPx, color: L.color || '#007AFF' });
+      });
+    });
+
+    // 1. Отрисовка динамической бегущей полосы в цвет кружка
+    ctx.save();
+    if (activeHits.length === 1) {
+      // Цвет одиночной линии
+      ctx.strokeStyle = activeHits[0].color;
+      ctx.shadowColor = activeHits[0].color;
+      ctx.shadowBlur = 8;
+      ctx.lineWidth = 2.5;
+    } else if (activeHits.length > 1) {
+      // Градиент, если считывается сразу несколько линий разных цветов
+      const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      const step = 1 / (activeHits.length - 1 || 1);
+      activeHits.forEach((hit, idx) => {
+        grad.addColorStop(idx * step, hit.color);
+      });
+      ctx.strokeStyle = grad;
+      ctx.shadowColor = activeHits[0].color;
+      ctx.shadowBlur = 10;
+      ctx.lineWidth = 3;
+    } else {
+      // По умолчанию, когда линия едет по пустому холсту
+      ctx.strokeStyle = 'rgba(0, 122, 255, 0.35)';
+      ctx.lineWidth = 2;
+    }
+
+    ctx.beginPath(); 
+    ctx.moveTo(xPx, 0); 
+    ctx.lineTo(xPx, canvas.height); 
+    ctx.stroke();
+    ctx.restore();
+
+    // 2. Отрисовка считывающих кружков
+    activeHits.forEach(hit => {
+      drawPointerCircle(xPx, hit.yPx, hit.color, pulse);
+    });
+
+    // Отключаем звуки, ушедшие с кадра
+    activeVoices.forEach((voice, key) => {
+      if(!currentFrameKeys.has(key)){
+        voice.release();
+        activeVoices.delete(key);
       }
     });
-    window.blit();
-    ctx.strokeStyle = 'rgba(0,122,255,0.8)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
+
     rafId = requestAnimationFrame(frame);
   }
   rafId = requestAnimationFrame(frame);
@@ -533,7 +742,7 @@ function startPlayback(){
 
 function stopPlayback(){
   isPlaying=false; if(rafId) cancelAnimationFrame(rafId);
-  voices.forEach(v=>v&&v.release()); voices=[]; window.blit();
+  stopAllVoices(); window.blit();
 }
 
 document.getElementById('playBtn').onclick = startPlayback;
