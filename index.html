@@ -194,7 +194,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   // КОНФИГУРАЦИЯ FIREBASE
   const firebaseConfig = {
@@ -206,6 +206,7 @@
     appId: "1:672914359498:web:3607041f9b945c20c86033",
     measurementId: "G-J0KGZPKK67"
   };
+
 
   // Инициализация Firebase
   const app = initializeApp(firebaseConfig);
@@ -268,7 +269,7 @@
     }
   };
 
-  // Загрузка галереи из базы
+  // Загрузка галереи из базы с возможностью удаления
   async function loadGallery() {
     const listEl = document.getElementById('galleryList');
     listEl.innerHTML = 'Загрузка...';
@@ -280,26 +281,55 @@
         listEl.innerHTML = 'В базе пока нет сохраненных проектов.';
         return;
       }
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
+      querySnapshot.forEach((documentSnap) => {
+        const data = documentSnap.data();
+        const docId = documentSnap.id;
         const item = document.createElement('div');
         item.className = 'gallery-item';
+        
+        // Кнопка удаления отображается только если текущий пользователь — автор работы
+        const isAuthor = currentUser && currentUser.email === data.author;
+        const deleteBtnHtml = isAuthor 
+          ? `<button class="btn destruct delete-btn" style="flex:0; padding:6px 12px; font-size:12px; margin-left:6px;">🗑 Удалить</button>` 
+          : '';
+
         item.innerHTML = `
           <div>
             <strong>${data.title}</strong>
             <div style="font-size:12px; color:#8e8e93;">Автор: ${data.author}</div>
           </div>
-          <button class="btn secondary" style="flex:0; padding:6px 12px; font-size:12px;">Загрузить</button>
+          <div style="display:flex;">
+            <button class="btn secondary load-btn" style="flex:0; padding:6px 12px; font-size:12px;">Загрузить</button>
+            ${deleteBtnHtml}
+          </div>
         `;
-        item.querySelector('button').onclick = () => {
+
+        // Логика кнопки "Загрузить"
+        item.querySelector('.load-btn').onclick = () => {
           window.lines = JSON.parse(data.lines);
           window.redrawArt(); window.blit();
           alert('Мелодия загружена на холст!');
         };
+
+        // Логика кнопки "Удалить"
+        if(isAuthor) {
+          item.querySelector('.delete-btn').onclick = async () => {
+            if(confirm(`Удалить работу "${data.title}"?`)) {
+              try {
+                await deleteDoc(doc(db, "tracks", docId));
+                alert('Удалено!');
+                loadGallery(); // Перезагружаем список
+              } catch(e) {
+                alert('Ошибка при удалении: ' + e.message);
+              }
+            }
+          };
+        }
+
         listEl.appendChild(item);
       });
     } catch(e) {
-      listEl.innerHTML = 'Создайте первую запись или проверьте настройки БД.';
+      listEl.innerHTML = 'Ошибка загрузки галереи.';
     }
   }
 
